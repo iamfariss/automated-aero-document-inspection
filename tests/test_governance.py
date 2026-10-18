@@ -138,6 +138,11 @@ class EndpointTests(unittest.TestCase):
         self.assertEqual(status, 400)
         self.assertIn('Admin login required', data['error'])
 
+    def test_local_model_configuration_requires_admin(self):
+        status, data = self.request('/local-model/configure', {'enabled': True, 'model': 'test'})
+        self.assertEqual(status, 400)
+        self.assertIn('Admin login required', data['error'])
+
     def test_bad_origin(self):
         self.assertEqual(self.request('/admin/setup', {}, origin='https://example.com')[0], 403)
 
