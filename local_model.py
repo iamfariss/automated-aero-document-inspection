@@ -85,7 +85,7 @@ def propose(analysis, config, transport=call_model):
                         continue
                     rid, value, unit = item['rule_id'], item['value'], item['unit']
                     # Literal OCR evidence is necessary, but does not prove the relationship.
-                    if rid not in relevant or not NUMBER.fullmatch(value) or not unit or len(unit) > 30 or not re.search(r'(?<![\w.<>≤≥])' + re.escape(value) + r'(?![\w.])', content) or not re.search(r'(?<!\w)' + re.escape(unit) + r'(?!\w)', content):
+                    if rid not in relevant or not NUMBER.fullmatch(value) or not unit or len(unit) > 30 or re.search(r'[<>≤≥]\s*' + re.escape(value), content) or not re.search(r'(?<![\w.<>≤≥+\-])' + re.escape(value) + r'(?![\w.])', content) or not re.search(r'(?<!\w)' + re.escape(unit) + r'(?!\w)', content):
                         entry['rejected'] += 1
                         continue
                     audit['candidates'].append({'rule_id': rid, 'property': relevant[rid]['property'],

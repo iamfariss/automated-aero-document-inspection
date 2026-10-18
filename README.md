@@ -64,7 +64,7 @@ Back up `data/`, `cases/` and `inbox/` with the server stopped. File access must
 python -m unittest discover -s tests -v
 ```
 
-51 automated tests cover governance, authentication, revision retention, bounds, traceability prerequisites, candidate extraction, duplicate/missing shipping evidence, source validation, case persistence, scanner markers/profiles and acceptance gates. Tests use synthetic requirements and fixtures.
+58 automated tests cover governance, authentication, revision retention, bounds, traceability prerequisites, candidate extraction, duplicate/missing shipping evidence, source validation, case persistence, scanner markers/profiles and acceptance gates. Tests use synthetic requirements and fixtures.
 
 Browser validation covered completed-batch ingestion, OCR candidate prefill, source evidence, verified numerical checks, document-finding acceptance gating, saving, server restart/recovery and evidence ZIP provenance. Supplied scan pages were also inspected: small chemistry figures showed OCR decimal/header errors, so extracted values remain explicitly unverified. This is not an accuracy certification across all suppliers.
 
@@ -75,3 +75,7 @@ python tools/build_portable.py release/Aero-Inspection-Windows
 ```
 
 Run this on a provisioned Windows Python installation. It creates a portable runtime and ZIP with dependency licenses. GitHub Actions runs tests and builds the same downloadable artifact. See OPERATIONS.md for deployment and AUDIT.md for human/Qwen review.
+
+## Optional small local model
+
+See [LOCAL_MODEL.md](LOCAL_MODEL.md) for the experimental Ollama integration, admin setup, evidence checks and correction-example capture. Model weights are installed separately; the baseline remains fully functional without them.
