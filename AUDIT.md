@@ -4,11 +4,13 @@
 - core.py: OCR invocation, page classification, GR template regions and evidence checks.
 - ocr.ps1: local Windows OCR bridge with word coordinates.
 - registry.py: SQLite schema, credential hashing, approval transitions and audit events.
+- review.py: inspection-scoped source validation, authoritative comparison and acceptance gating.
+- review.js: material observation form and preview; any field edit clears verification.
 - properties.py: deterministic numerical comparison with traceability prerequisites.
 - server.py: localhost HTTP endpoints, PDF ingestion, inspection persistence and admin session enforcement.
 - ui.html: inspector review interface.
 - governance.html: specification upload, admin login and approval interface.
-- tests/test_governance.py: 18 synthetic automated tests.
+- tests/test_governance.py and tests/test_review.py: 28 synthetic automated tests.
 
 ## Invariants to audit
 1. Draft, rejected and superseded specifications cannot be selected for new inspections.
@@ -22,6 +24,9 @@
 9. Passwords are PBKDF2-hashed; plaintext credentials and session tokens are never written to the database/audit history.
 10. Customer scans, specification PDFs, credentials and generated results are excluded from Git.
 
+## Material review behavior
+The server validates source-page membership, strips whitespace, recomputes results from the frozen specification, and refuses Accepted by inspector when a material result is unresolved or outside limits. Results and observations are saved together with the specification snapshot. These checks do not automatically close other document findings; the inspector remains responsible for applicability and document reconciliation.
+
 ## Known engineering limits for review
 - Admin setup is a first-run local operation; there is one admin account and no account recovery or password rotation yet.
 - No login throttling yet; local server access and filesystem access must be controlled for operational deployment.
@@ -30,7 +35,7 @@
 - Thread-per-request server and PDF/OCR work have no concurrency quota or overall page limit. Upload size limits alone do not bound decompression/rendering cost.
 - Admin rules and applicability are human-verified. This version does not prove a standard clause has been correctly transcribed.
 - One active approved version per specification code is supported. Historical procurement exceptions and simultaneous applicable revisions need an explicit model.
-- The numerical engine checks a user-verified heat link but does not independently establish that link.
+- The numerical engine checks a user-verified heat link but does not independently establish that link. A known page ID establishes the source exists, not that the typed value or heat agrees with the pixels.
 - Audit records use UTC timestamps; effective date gating uses UTC+08:00 for this deployment.
 - Source PDF checksums detect PDF alteration; they do not cryptographically protect rules, approval states or audit records against direct SQLite modification.
 - Production changes need end-to-end UI tests, parser resource limits, migration strategy and benchmark accuracy on labelled multi-supplier document sets.

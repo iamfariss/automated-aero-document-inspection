@@ -5,7 +5,7 @@
 - [x] Admin approval/rejection/withdrawal and version retention
 - [x] Specification snapshots on inspection records
 - [x] Testable numerical comparison module
-- [ ] Wire verified property observations and numerical results into the review UI
+- [x] Wire verified property observations and numerical results into the review UI
 - [ ] Extract chemistry/mechanical tables with cell coordinates and explicit confidence
 - [ ] Match PO line, part/revision, supplier lot, heat and test report identifiers
 - [ ] Reconcile received quantity and units without double-counting duplicate shipments

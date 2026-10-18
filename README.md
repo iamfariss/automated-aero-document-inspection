@@ -26,7 +26,9 @@ Select an approved specification before inspecting a delivery. The inspection st
 
 Working: PDF rendering; Windows OCR; heading-based document classification; supplied GR layout identifier candidates; exact rendered-page duplicate flags; evidence display; inspector decisions; JSON/CSV outputs; local SQLite specification registry; admin approval/rejection/withdrawal; audit events; immutable inspection specification snapshot.
 
-`properties.py` is a separately tested deterministic comparison module. It requires approved rules plus an inspector-verified measurement, source page, material condition and heat identifier. It uses inclusive Decimal comparisons and refuses implicit unit conversions. It is NOT connected to automatic OCR table extraction or the inspection UI yet. No actual specification limits are supplied in this repository.
+The material-check form compares inspector-entered observations with the inspection's frozen approved rules. For each property, enter the reported value, unit, material condition, heat/lot identifier and source page, then confirm that you verified these against the documents. Editing an observation clears its verification. Check material properties previews server-computed results. Saving the review recomputes every result; client-supplied statuses are ignored. Accepted reviews require all numerical checks to be within approved limits. Missing requirements, unverified observations and out-of-limit results remain Needs review or may be rejected.
+
+Review JSON preserves observations, results and the specification snapshot. `material-checks.csv` exports the property, clause, value, unit, condition, heat and source page. `properties.py` uses inclusive Decimal comparisons and refuses implicit unit conversions. Automatic property-table extraction and independent heat linkage remain pending. No operational specification limits are supplied.
 
 Pending: automatic material table extraction; certificate-to-heat-to-report linkage; quantity and unit reconciliation across line items; multiple governing specifications per line item; automatic applicability selection; scanner folder ingestion; per-user accounts; robust recovery of old inspection cases in the UI; production qualification against a representative ground-truth dataset.
 
@@ -36,9 +38,9 @@ Pending: automatic material table extraction; certificate-to-heat-to-report link
 python -m unittest discover -s tests -v
 ```
 
-18 automated tests cover admin authentication, setup, logout, cross-origin rejection, approval gating, replacement, preserved snapshots, withdrawal, invalid limits, future-effective versions, altered-PDF detection and numerical boundaries. Tests use synthetic fixtures, not customer scans. Registry tests do not claim PDF semantics validation; the upload endpoint additionally validates PDFs through PDFium.
+28 automated tests cover admin authentication, setup, logout, cross-origin rejection, approval gating, replacement, preserved snapshots, withdrawal, invalid limits, future-effective versions, altered-PDF detection and numerical boundaries. Tests use synthetic fixtures, not customer scans. Registry tests do not claim PDF semantics validation; the upload endpoint additionally validates PDFs through PDFium.
 
-An earlier three-page customer sample passed local HTTP upload, OCR, evidence retrieval and review/CSV saving. That was performed before specification integration. Browser layout and this version's complete OCR/governance interaction still need end-to-end review.
+An earlier three-page customer sample passed local HTTP upload, OCR, evidence retrieval and review/CSV saving. That was performed before specification integration. The current material workflow was also tested in the browser with a synthetic one-page PDF and synthetic approved requirements: OCR, source preview, in-limit comparison, blocked out-of-limit acceptance, rejected review saving, and JSON/CSV provenance passed. Full admin governance interaction and multi-supplier accuracy still need validation.
 
 ## Data and backup
 

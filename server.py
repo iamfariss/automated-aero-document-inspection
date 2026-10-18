@@ -5,6 +5,7 @@ from pathlib import Path
 from datetime import datetime
 import pypdfium2 as pdfium
 from registry import Registry
+from review import evaluate_observations, prepare_review
 import secrets
 REGISTRY = Registry(ROOT / 'data')
 SESSIONS = {}
@@ -36,7 +37,7 @@ def process(job, files, specification=None):
                 seen.setdefault(digest, pid)
             doc.close()
         findings = inspect(pages)
-        findings.append(('Needs review', 'Governing specification', 'Selected ' + specification['code'] + ' revision ' + specification['revision'] + '; confirm applicability. Numerical property checks remain pending.' if specification else 'No approved specification selected.', None))
+        findings.append(('Needs review', 'Governing specification', 'Selected ' + specification['code'] + ' revision ' + specification['revision'] + '; confirm applicability and verify material observations below.' if specification else 'No approved specification selected.', None))
         result = {'pages': pages, 'findings': findings, 'specification': specification}
         (case / 'analysis.json').write_text(json.dumps(result, indent=2), encoding='utf-8')
         JOBS[job].update(state='done', result=result)
@@ -73,6 +74,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self.reply(REGISTRY.pdf(int(self.path.rsplit('/', 1)[1])), mime='application/pdf')
             except Exception as e:
                 return self.reply({'error': str(e)}, 404)
+        if self.path == '/review.js':
+            return self.reply((ROOT / 'review.js').read_bytes(), mime='application/javascript; charset=utf-8')
         if self.path == '/governance.html':
             return self.reply((ROOT / 'governance.html').read_bytes(), mime='text/html; charset=utf-8')
         if self.path == '/':
@@ -134,24 +137,30 @@ class Handler(BaseHTTPRequestHandler):
                 JOBS[job] = {'state': 'running', 'progress': 'Starting OCR'}
                 threading.Thread(target=process, args=(job, data['files'], specification), daemon=True).start()
                 return self.reply({'job': job})
+            if self.path == '/properties':
+                job = data['job']
+                if job not in JOBS or JOBS[job]['state'] != 'done':
+                    raise ValueError('Inspection incomplete')
+                return self.reply(evaluate_observations(JOBS[job]['result'], data.get('observations', [])))
             if self.path == '/review':
                 job = data['job']
                 if job not in JOBS or JOBS[job]['state'] != 'done':
                     raise ValueError('Inspection incomplete')
-                if not data.get('inspector', '').strip() or not data.get('notes', '').strip():
-                    raise ValueError('Inspector and review notes required')
-                if data['decision'] not in ['Needs review', 'Accepted by inspector', 'Rejected by inspector']:
-                    raise ValueError('Invalid decision')
                 case = ROOT / 'cases' / job
-                data['timestamp'] = datetime.now().isoformat()
-                data['specification'] = JOBS[job]['result'].get('specification')
+                data = prepare_review(JOBS[job]['result'], data, datetime.now().astimezone().isoformat())
                 with (case / 'review-history.jsonl').open('a', encoding='utf-8') as f:
                     f.write(json.dumps(data) + '\n')
                 with (case / 'findings.csv').open('w', newline='', encoding='utf-8-sig') as f:
                     w = csv.writer(f)
                     w.writerow(['Status', 'Check', 'Evidence / action', 'Page'])
                     w.writerows(JOBS[job]['result']['findings'])
-                return self.reply({'saved': str(case)})
+                with (case / 'material-checks.csv').open('w', newline='', encoding='utf-8-sig') as f:
+                    w = csv.writer(f)
+                    w.writerow(['Status', 'Property', 'Clause', 'Value', 'Unit', 'Condition', 'Heat', 'Source page', 'Reason'])
+                    for item in data['property_results']:
+                        observation = item.get('observation', {})
+                        w.writerow([item['status'], item.get('property', ''), item.get('clause', '')] + [observation.get(k, '') for k in ('value', 'unit', 'condition', 'heat', 'source_page')] + [item['reason']])
+                return self.reply({'saved': str(case), 'property_results': data['property_results']})
             self.reply({'error': 'Not found'}, 404)
         except Exception as e:
             self.reply({'error': str(e)}, 400)
