@@ -1,6 +1,7 @@
 import json
 import unittest
-from local_model import propose, validate_config
+from local_model import propose, validate_config, model_status, local_request
+from unittest.mock import patch, MagicMock
 
 class LocalModelTests(unittest.TestCase):
     def analysis(self, content='UTS: 520 MPa'):
@@ -50,3 +51,48 @@ class LocalModelTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             validate_config({'enabled': 'yes', 'model': 'test'})
         self.assertEqual(validate_config({'enabled': True, 'model': 'qwen3:0.6b'})['model'], 'qwen3:0.6b')
+
+    def test_ambiguous_row_and_unpaired_unit_rejected(self):
+        for row in ('UTS: 520; YS: 400 MPa', 'UTS: 520; MPa listed elsewhere'):
+            self.assertEqual(propose(self.analysis(row), {'enabled': True, 'model': 'test'},
+                self.response([{'rule_id': '1:0', 'value': '520', 'unit': 'MPa'}]))['candidates'], [])
+
+    def test_duplicate_model_items_collapsed(self):
+        item = {'rule_id': '1:0', 'value': '520', 'unit': 'MPa'}
+        self.assertEqual(len(propose(self.analysis(), {'enabled': True, 'model': 'test'}, self.response([item,item]))['candidates']), 1)
+
+    def test_incomplete_generation_rejected(self):
+        response = self.response([{'rule_id': '1:0', 'value': '520', 'unit': 'MPa'}])()
+        response['done_reason'] = 'length'
+        audit = propose(self.analysis(), {'enabled': True, 'model': 'test'}, lambda *_: response)
+        self.assertEqual(audit['candidates'], [])
+        self.assertIn('incomplete', audit['calls'][0]['error'])
+
+    def test_budget_stops_before_generation(self):
+        times = iter([0, 61])
+        audit = propose(self.analysis(), {'enabled': True, 'model': 'test'}, clock=lambda: next(times))
+        self.assertTrue(audit['truncated'])
+        self.assertEqual(audit['calls'], [])
+
+    def test_readiness_records_installed_digest(self):
+        state = model_status({'model':'test'}, lambda *a, **kw: {'models':[{'name':'test','digest':'a'*64,'size':123}]})
+        self.assertTrue(state['ready'])
+        self.assertEqual(state['digest'], 'a'*64)
+
+    def test_readiness_blocks_missing_cloud_and_unreachable(self):
+        for models in ([], [{'name':'test','digest':'a'*64,'remote_host':'cloud.example'}], [{'name':'test','digest':'bad'}]):
+            self.assertFalse(model_status({'model':'test'}, lambda *a, **kw: {'models':models})['ready'])
+        def unavailable(*a, **kw):
+            raise OSError('unavailable')
+        self.assertFalse(model_status({'model':'test'}, unavailable)['ready'])
+
+    def test_transport_is_bounded_and_ignores_proxies(self):
+        opener = MagicMock()
+        opener.open.return_value.__enter__.return_value.read.return_value = b'x' * 131073
+        with patch('local_model.urllib.request.build_opener', return_value=opener) as build:
+            with self.assertRaisesRegex(ValueError, 'too large'):
+                local_request('/api/chat', {})
+            self.assertEqual(build.call_args.args[0].proxies, {})
+            self.assertEqual(opener.open.call_args.args[0].full_url, 'http://127.0.0.1:11434/api/chat')
+        with self.assertRaises(ValueError):
+            local_request('https://external.example')
