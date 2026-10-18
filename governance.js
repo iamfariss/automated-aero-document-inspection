@@ -16,3 +16,5 @@ $('save-profile').onclick=()=>action(async()=>{await post('/scanner-profile',{na
 
 fetch('/local-model').then(r=>r.json()).then(c=>{$('lm-enabled').checked=c.enabled;$('lm-model').value=c.model;}).catch(e=>message(e.message));
 $('lm-save').onclick=()=>action(async()=>{await post('/local-model/configure',{enabled:$('lm-enabled').checked,model:$('lm-model').value});message('Local model configuration saved and recorded');});
+
+$('lm-check').onclick=()=>action(async()=>{const state=await post('/local-model/check',{});$('lm-status').textContent=JSON.stringify(state,null,2);});

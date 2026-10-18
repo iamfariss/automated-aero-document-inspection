@@ -64,7 +64,7 @@ Back up `data/`, `cases/` and `inbox/` with the server stopped. File access must
 python -m unittest discover -s tests -v
 ```
 
-58 automated tests cover governance, authentication, revision retention, bounds, traceability prerequisites, candidate extraction, duplicate/missing shipping evidence, source validation, case persistence, scanner markers/profiles and acceptance gates. Tests use synthetic requirements and fixtures.
+69 automated tests cover governance, authentication, revision retention, bounds, traceability prerequisites, candidate extraction, duplicate/missing shipping evidence, source validation, case persistence, scanner markers/profiles and acceptance gates. Tests use synthetic requirements and fixtures.
 
 Browser validation covered completed-batch ingestion, OCR candidate prefill, source evidence, verified numerical checks, document-finding acceptance gating, saving, server restart/recovery and evidence ZIP provenance. Supplied scan pages were also inspected: small chemistry figures showed OCR decimal/header errors, so extracted values remain explicitly unverified. This is not an accuracy certification across all suppliers.
 

@@ -29,11 +29,12 @@ function display() {
     $('findings').append(row);
   });
   if(result.pages.length)show(result.pages[0].id);
+  $('model-status').textContent=(result.model_warnings||[]).join(' ');
   materialControls();$('name').value=savedReview?.inspector||'';$('notes').value=savedReview?.notes||'';$('decision').value=savedReview?.decision||'Needs review';
   $('export').hidden=false;$('export').href='/case/'+job+'/export';
 }
 async function openCase(id) {
-  if(!id)return;job=id;result=null;savedReview=null;
+  if(!id)return;job=id;result=null;savedReview=null;$('model-status').textContent='';
   $('material-observations').replaceChildren();$('material-results').textContent='';$('findings').replaceChildren();$('export').hidden=true;
   while(true){if(job!==id)return;const state=await get('/job/'+id);if(job!==id)return;status(state.progress||state.state);
     if(state.state==='error')throw Error(state.error);

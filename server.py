@@ -8,7 +8,7 @@ from registry import Registry
 from selection import combine_specifications
 from review import evaluate_observations, prepare_review
 from cases import CaseStore, Inbox
-from local_model import propose, validate_config
+from local_model import propose, validate_config, model_status
 MODEL_LOCK = threading.Lock()
 REGISTRY = Registry(ROOT / 'data')
 STORE = CaseStore(ROOT / 'cases')
@@ -163,6 +163,11 @@ class Handler(BaseHTTPRequestHandler):
             data = json.loads(self.rfile.read(length))
             if not isinstance(data, dict):
                 raise ValueError('Request must be an object')
+            if self.path == '/local-model/check':
+                self.admin()
+                path = ROOT / 'data' / 'local-model.json'
+                config = json.loads(path.read_text(encoding='utf-8')) if path.exists() else {}
+                return self.reply(model_status(config))
             if self.path == '/local-model/configure':
                 actor = self.admin()
                 config = validate_config(data)
@@ -184,6 +189,10 @@ class Handler(BaseHTTPRequestHandler):
                     config = json.loads(path.read_text()) if path.exists() else {}
                     if not config.get('enabled'):
                         raise ValueError('Administrator must enable an installed local model first')
+                    readiness = model_status(config)
+                    if not readiness['ready']:
+                        raise ValueError(readiness['message'])
+                    config['digest'] = readiness['digest']
                     analysis = state['result']
                     page = next((p for p in analysis['pages'] if p['id'] == data.get('page')), None)
                     if page is None:
