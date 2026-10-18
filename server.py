@@ -8,6 +8,8 @@ from registry import Registry
 from selection import combine_specifications
 from review import evaluate_observations, prepare_review
 from cases import CaseStore, Inbox
+from local_model import propose, validate_config
+MODEL_LOCK = threading.Lock()
 REGISTRY = Registry(ROOT / 'data')
 STORE = CaseStore(ROOT / 'cases')
 SESSIONS = {}
@@ -50,6 +52,11 @@ def save_review(case, analysis, request):
             for item in record['property_results']:
                 o = item.get('observation', {})
                 writer.writerow(csv_safe([item['status'], item.get('specification_code', ''), item.get('specification_revision', ''), item.get('property', ''), item.get('clause', '')] + [o.get(k, '') for k in ('value', 'unit', 'condition', 'heat', 'source_page')] + [item['reason']]))
+        with (case / 'correction-examples.jsonl').open('a', encoding='utf-8') as stream:
+            stream.write(json.dumps({'status': 'Pending admin dataset review; never train automatically',
+                'timestamp': record['timestamp'], 'inspector': record['inspector'],
+                'observations': record['observations'], 'ocr_candidates': analysis.get('candidates', []),
+                'model_audits': sorted(p.name for p in case.glob('local-model-*.json'))}) + '\n')
         esc = lambda value: html.escape(str(value))
         report = '<!doctype html><meta charset="utf-8"><title>Inspection review</title><style>body{font:16px Segoe UI;margin:40px}pre{white-space:pre-wrap}img{max-width:100%}</style><h1>Inspection review</h1>'
         report += '<p>' + esc(record['decision']) + ' | ' + esc(record['inspector']) + ' | ' + esc(record['timestamp']) + '</p><pre>' + esc(json.dumps(record, indent=2)) + '</pre>'
@@ -97,6 +104,9 @@ class Handler(BaseHTTPRequestHandler):
                 name = static[self.path]
                 mime = 'application/javascript' if name.endswith('.js') else 'text/css' if name.endswith('.css') else 'text/html'
                 return self.reply((ROOT / name).read_bytes(), mime=mime + '; charset=utf-8')
+            if self.path == '/local-model':
+                path = ROOT / 'data' / 'local-model.json'
+                return self.reply(json.loads(path.read_text()) if path.exists() else {'enabled': False, 'model': 'qwen3:0.6b'})
             if self.path == '/registry':
                 return self.reply({'configured': REGISTRY.configured(), 'specs': REGISTRY.list()})
             if self.path == '/registry/audit':
@@ -153,6 +163,40 @@ class Handler(BaseHTTPRequestHandler):
             data = json.loads(self.rfile.read(length))
             if not isinstance(data, dict):
                 raise ValueError('Request must be an object')
+            if self.path == '/local-model/configure':
+                actor = self.admin()
+                config = validate_config(data)
+                config['configured_by'] = actor
+                from worker import write_json
+                with MODEL_LOCK:
+                    write_json(ROOT / 'data' / 'local-model.json', config)
+                    with (ROOT / 'data' / 'local-model-config-history.jsonl').open('a', encoding='utf-8') as history:
+                        history.write(json.dumps(config | {'timestamp': datetime.now(timezone.utc).isoformat()}) + '\n')
+                return self.reply(config)
+            if self.path == '/local-model/propose':
+                if not MODEL_LOCK.acquire(blocking=False):
+                    raise ValueError('Local model is busy')
+                try:
+                    state = STORE.get(data['job'])
+                    if state['state'] != 'done':
+                        raise ValueError('Inspection incomplete')
+                    path = ROOT / 'data' / 'local-model.json'
+                    config = json.loads(path.read_text()) if path.exists() else {}
+                    if not config.get('enabled'):
+                        raise ValueError('Administrator must enable an installed local model first')
+                    analysis = state['result']
+                    page = next((p for p in analysis['pages'] if p['id'] == data.get('page')), None)
+                    if page is None:
+                        raise ValueError('Select an evidence page')
+                    audit = propose(analysis | {'pages': [page]}, config)
+                    import uuid
+                    case = STORE.path(data['job'])
+                    from worker import write_json
+                    with STORE.lock:
+                        write_json(case / ('local-model-' + uuid.uuid4().hex + '.json'), audit)
+                    return self.reply(audit)
+                finally:
+                    MODEL_LOCK.release()
             if self.path == '/admin/setup':
                 REGISTRY.setup(data['name'], data['password'])
                 return self.reply({'configured': True})

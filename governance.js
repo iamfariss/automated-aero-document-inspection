@@ -13,3 +13,6 @@ $('upload').onclick=()=>action(async()=>{const file=$('pdf').files[0];if(!file)t
 $('refresh').onclick=()=>action(refresh);$('audit').onclick=()=>action(async()=>{const response=await fetch('/registry/audit',{headers:{Authorization:'Bearer '+token}});const value=await response.json();if(!response.ok)throw Error(value.error);$('history').textContent=JSON.stringify(value,null,2);});action(refresh);
 
 $('save-profile').onclick=()=>action(async()=>{await post('/scanner-profile',{name:$('profile-name').value,description:$('profile-description').value,specification_ids:[...$('profile-specs').selectedOptions].map(o=>o.value)});message('Scanner profile saved and audited');await refresh();});
+
+fetch('/local-model').then(r=>r.json()).then(c=>{$('lm-enabled').checked=c.enabled;$('lm-model').value=c.model;}).catch(e=>message(e.message));
+$('lm-save').onclick=()=>action(async()=>{await post('/local-model/configure',{enabled:$('lm-enabled').checked,model:$('lm-model').value});message('Local model configuration saved and recorded');});

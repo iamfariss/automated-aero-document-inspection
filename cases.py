@@ -77,6 +77,9 @@ class CaseStore:
             status = json.loads((case / 'status.json').read_text(encoding='utf-8'))
         if status['state'] == 'done':
             status['result'] = json.loads((case / 'analysis.json').read_text(encoding='utf-8'))
+            for audit_path in sorted(case.glob('local-model-*.json')):
+                audit = json.loads(audit_path.read_text(encoding='utf-8'))
+                status['result'].setdefault('candidates', []).extend(audit.get('candidates', []))
             history = case / 'review-history.jsonl'
             if history.exists():
                 status['review'] = json.loads(history.read_text(encoding='utf-8').splitlines()[-1])

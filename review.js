@@ -35,3 +35,20 @@ function materialRow(group,rule,index,previous) {
 }
 function observations(){if(!result)return [];return [...$('material-observations').querySelectorAll('fieldset')].map(fieldset=>{const observation={property:fieldset.dataset.property,rule_id:fieldset.dataset.rule};fieldset.querySelectorAll('[data-field]').forEach(input=>observation[input.dataset.field]=input.type==='checkbox'?input.checked:input.value);return observation;});}
 $('check-material').onclick=async()=>{try{if(!result)throw Error('Complete inspection first');const checked=await api('/properties',{job,observations:observations()});$('material-results').textContent=checked.results.map(r=>`${r.property||'Material'} / ${r.heat||'unlinked'}: ${r.status}\n${r.reason}`).join('\n\n');}catch(error){$('material-results').textContent=error.message;}};
+
+$('model-propose').onclick=async()=>{
+  const button=$('model-propose');
+  try {
+    if(!result)throw Error('Open a completed case first');
+    button.disabled=true;$('model-status').textContent='Reading selected OCR page with the local model…';
+    const id=job;
+    const audit=await api('/local-model/propose',{job:id,page:$('pages').value});
+    if(job!==id)return;
+    result.candidates.push(...audit.candidates);
+    // Preserve every current observation and resolution; new proposals enter the picker only.
+    const current=observations();
+    const retained=savedReview;
+    savedReview={...(retained||{}),observations:current};materialControls();savedReview=retained;
+    $('model-status').textContent=`${audit.candidates.length} unverified proposals. Rejected proposals: ${audit.calls.reduce((n,c)=>n+(c.rejected||0),0)}. `+audit.calls.filter(c=>c.error).map(c=>c.error).join(' ');
+  }catch(error){$('model-status').textContent=error.message;}finally{button.disabled=false;}
+};
