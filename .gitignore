@@ -8,3 +8,5 @@ cases/
 *.pdf
 *.png
 *.jpg
+
+release/

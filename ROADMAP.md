@@ -1,17 +1,18 @@
-# Implementation roadmap
+# V1 delivery status
 
-- [x] Local PDF/OCR inspection and evidence display
-- [x] Local governed specification registry
-- [x] Admin approval/rejection/withdrawal and version retention
-- [x] Specification snapshots on inspection records
-- [x] Testable numerical comparison module
-- [x] Wire verified property observations and numerical results into the review UI
-- [ ] Extract chemistry/mechanical tables with cell coordinates and explicit confidence
-- [ ] Match PO line, part/revision, supplier lot, heat and test report identifiers
-- [ ] Reconcile received quantity and units without double-counting duplicate shipments
-- [ ] Add approved applicability mappings and multiple specifications per inspected item
-- [ ] Scanner folder ingestion with atomic batch completion
-- [ ] Password rotation, user identities, login throttling, resource limits and recovery UI
-- [ ] Regression corpus and qualification against inspector-labelled results
+Implemented and tested:
+- Offline Windows PDF ingestion, OCR, evidence display and original hashes.
+- Governed specification PDFs, rule forms, version history and audit events.
+- Admin login, password rotation, session expiry and login throttling.
+- Multiple frozen approved specifications per inspection.
+- Completed scanner-batch markers and admin-controlled scanner profiles.
+- Isolated, bounded PDF/OCR queue with persistent cases and restart recovery.
+- Labelled and table-column material candidates, always unverified initially.
+- Explicit shipping-line quantity comparison without ambiguous summation.
+- Per-heat numerical comparisons and document-finding acceptance gates.
+- Saved reviews, source snapshots, CSV/HTML reporting and evidence ZIP export.
+- 51 regression tests and Windows CI/package build.
 
-No operational specification limits will be guessed. Uploaded specs are candidates until the administrator verifies them and approves the corresponding requirements.
+Qualification requires user inputs: approved operational specifications and their exact revisions, engineering applicability decisions, PO/drawing clauses and inspector-labelled supplier examples. These are not replaced by synthetic test limits.
+
+Future enterprise extensions, outside this single-PC pilot: authenticated individual inspector accounts/SSO, automatic engineering applicability mapping, calibrated supplier-specific OCR models, tamper-evident archives, qualified digital signatures and direct scanner-vendor integration.
