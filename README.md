@@ -64,7 +64,7 @@ Back up `data/`, `cases/` and `inbox/` with the server stopped. File access must
 python -m unittest discover -s tests -v
 ```
 
-69 automated tests cover governance, authentication, revision retention, bounds, traceability prerequisites, candidate extraction, duplicate/missing shipping evidence, source validation, case persistence, scanner markers/profiles and acceptance gates. Tests use synthetic requirements and fixtures.
+77 automated tests cover governance, authentication, revision retention, bounds, traceability prerequisites, candidate extraction, duplicate/missing shipping evidence, source validation, case persistence, scanner markers/profiles and acceptance gates. Tests use synthetic requirements and fixtures.
 
 Browser validation covered completed-batch ingestion, OCR candidate prefill, source evidence, verified numerical checks, document-finding acceptance gating, saving, server restart/recovery and evidence ZIP provenance. Supplied scan pages were also inspected: small chemistry figures showed OCR decimal/header errors, so extracted values remain explicitly unverified. This is not an accuracy certification across all suppliers.
 
@@ -79,3 +79,7 @@ Run this on a provisioned Windows Python installation. It creates a portable run
 ## Optional small local model
 
 See [LOCAL_MODEL.md](LOCAL_MODEL.md) for the experimental Ollama integration, admin setup, evidence checks and correction-example capture. Model weights are installed separately; the baseline remains fully functional without them.
+
+## Local reference library
+
+See [CATALOGUE.md](CATALOGUE.md) for ZIP catalogue import, partial native-text search and admin-controlled promotion to draft specifications. Imported documents and indexes stay local and are excluded from software packages and Git.

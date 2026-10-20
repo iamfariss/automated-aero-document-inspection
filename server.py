@@ -9,6 +9,9 @@ from selection import combine_specifications
 from review import evaluate_observations, prepare_review
 from cases import CaseStore, Inbox
 from local_model import propose, validate_config, model_status
+from catalogue import Catalogue
+from urllib.parse import urlsplit, parse_qs
+CATALOGUE = Catalogue(ROOT / "data" / "catalogue")
 MODEL_LOCK = threading.Lock()
 REGISTRY = Registry(ROOT / 'data')
 STORE = CaseStore(ROOT / 'cases')
@@ -104,6 +107,14 @@ class Handler(BaseHTTPRequestHandler):
                 name = static[self.path]
                 mime = 'application/javascript' if name.endswith('.js') else 'text/css' if name.endswith('.css') else 'text/html'
                 return self.reply((ROOT / name).read_bytes(), mime=mime + '; charset=utf-8')
+            if urlsplit(self.path).path == '/catalogue/search':
+                query = parse_qs(urlsplit(self.path).query)
+                return self.reply(CATALOGUE.search(query.get('q',[''])[0],int(query.get('offset',['0'])[0])))
+            if self.path == '/catalogue/summary':
+                return self.reply(CATALOGUE.summary())
+            if self.path.startswith('/catalogue/pdf/'):
+                source, raw = CATALOGUE.pdf(int(self.path.rsplit('/',1)[-1]))
+                return self.reply(raw, mime='application/pdf')
             if self.path == '/local-model':
                 path = ROOT / 'data' / 'local-model.json'
                 return self.reply(json.loads(path.read_text()) if path.exists() else {'enabled': False, 'model': 'qwen3:0.6b'})
@@ -163,6 +174,20 @@ class Handler(BaseHTTPRequestHandler):
             data = json.loads(self.rfile.read(length))
             if not isinstance(data, dict):
                 raise ValueError('Request must be an object')
+            if self.path == '/catalogue/draft':
+                actor = self.admin()
+                if type(data.get('source_id')) is not int:
+                    raise ValueError('Select a catalogue source')
+                source, raw = CATALOGUE.pdf(data['source_id'])
+                if len(raw)>30000000 or not source['pages'] or source['pages']>300 or source['status']=='PDF indexing error':
+                    raise ValueError('Source needs PDF validation or exceeds 30 MB draft limit')
+                metadata = dict(data)
+                metadata['filename'] = Path(source['member']).name
+                metadata['uploaded_by'] = actor
+                sid = REGISTRY.upload(metadata, raw)
+                with REGISTRY.connect() as c:
+                    REGISTRY.audit(c,actor,'Catalogue source linked',sid,json.dumps({'source_id':source['id'],'member':source['member'],'archive_sha':source['archive_sha'],'source_sha256':source['sha256']}))
+                return self.reply({'id':sid,'status':'Draft'})
             if self.path == '/local-model/check':
                 self.admin()
                 path = ROOT / 'data' / 'local-model.json'
