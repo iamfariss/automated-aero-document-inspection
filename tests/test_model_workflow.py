@@ -101,3 +101,23 @@ class ModelWorkflowTests(unittest.TestCase):
         state = self.store.get(self.job)
         self.assertEqual(state['state'],'done')
         self.assertTrue(state['result']['model_warnings'])
+
+    def test_catalogue_source_creates_only_an_admin_draft(self):
+        from catalogue import Catalogue
+        from test_catalogue import pdf_bytes
+        catalogue=Catalogue(self.root/'reference-library')
+        archive=self.root/'synthetic.zip'
+        source_pdf=pdf_bytes()
+        with zipfile.ZipFile(archive,'w') as z:z.writestr('TEST/REF_A.pdf',source_pdf)
+        catalogue.import_zip(archive);catalogue.index()
+        metadata={'source_id':1,'code':'SYNTHETIC','revision':'A','title':'Synthetic only',
+            'applicability':'Manual test','effective_date':'2020-01-01','rules':[], 'material_required':True}
+        with patch.object(server,'CATALOGUE',catalogue):
+            self.assertEqual(self.request('/catalogue/draft',metadata)[0],400)
+            self.assertEqual(self.registry.list(),[])
+            code,body=self.request('/catalogue/draft',metadata,'test-admin')
+            self.assertEqual(code,200)
+            sid=json.loads(body)['id']
+            self.assertEqual(self.registry.list()[0]['status'],'Draft')
+            self.assertEqual(self.registry.pdf(sid),source_pdf)
+            with self.assertRaises(ValueError):self.registry.snapshot(sid)
